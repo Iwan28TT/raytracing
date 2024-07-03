@@ -57,15 +57,23 @@ int main() {
     bardrix::camera camera = bardrix::camera({ 0,0,0 }, { 0,0,1 }, width, height, 60);
 
     // Create a sphere
-    sphere sphere(1.0, bardrix::point3(0.0, 0.0, 3.0), bardrix::material(0.1, 1, 0.5, 50));
+    std::vector<sphere> spheres = {
+        sphere(1.0, bardrix::point3(0.0, 0.0, 3.0), bardrix::material(0.1, 1, 0.5, 50)),
+        sphere(0.5, bardrix::point3(1.0, 1.0, 4.0), bardrix::material(0.1, 1, 0.5, 50)),
+        sphere(0.75, bardrix::point3(-1.0, -1.0, 5.0), bardrix::material(0.1, 1, 0.5, 50))
+    };
 
     //Create a light
-    bardrix::light light = bardrix::light({ -1,0,-1 }, 4, bardrix::color::cyan());
-    bardrix::light light2 = bardrix::light({ 1,0,1 }, 1, bardrix::color::cyan());
+    std::vector <bardrix::light> lights = {
+    bardrix::light({ -1,0,-1 }, 4, bardrix::color::cyan()),
+    bardrix::light({ 1,0,1 }, 1, bardrix::color::cyan()),
+    bardrix::light({2,0,1 }, 2, bardrix::color::cyan())
+
+    };
 
     // [&camera, &sphere] is a capture list, this means we can access those objects outside the lambda
     // If you'd want to add a light you'd have to add this to the capture list too.
-    window.on_paint = [&camera, &sphere, &light, &light2](bardrix::window* window, std::vector<uint32_t>& buffer) {
+    window.on_paint = [&camera, &spheres, &lights](bardrix::window* window, std::vector<uint32_t>& buffer) {
         // Go through all the pixels
         for (int y = 0; y < window->get_height(); y++) {
             for (int x = 0; x < window->get_width(); x++) {
@@ -77,18 +85,24 @@ int main() {
                 // In order to check if the optional has a value, we use the has_value() method
                 // If the optional has a value, we can access it using the value() method
                 // E.g. intersection.value() -> bardrix::point3
-                std::optional<bardrix::point3> intersection = sphere.intersection(ray);
 
-                // Default color is black
-                bardrix::color color = bardrix::color::black();
 
-                // If the ray intersects the sphere, paint the pixel white
-                if (intersection.has_value()) {
-                    double intensity = calculate_light_intensity(sphere, light, camera, intersection.value());
-                    intensity += calculate_light_intensity(sphere, light2, camera, intersection.value());
-                    color = light.color * intensity;
+                    // Default color is black
+                    bardrix::color color = bardrix::color::green();
+                for (sphere& s : spheres) {
+
+
+                    std::optional<bardrix::point3> intersection = s.intersection(ray);
+
+                    // If the ray intersects the sphere, paint the pixel white
+                    if (intersection.has_value()) {
+                        double intensity = 0;
+                        for (bardrix::light& l : lights) {
+                            intensity += calculate_light_intensity(s, l, camera, intersection.value());
+                            color = l.color.blended(s.get_material().color) * intensity;
+                        }
+                    }
                 }
-
                 // Set the pixel
                 buffer[y * window->get_width() + x] = color.argb(); // ARGB is the format used by Windows API
             }
